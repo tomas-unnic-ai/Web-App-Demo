@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de IA</title>
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Importmap para resolver módulos npm sin bundler -->
+    <script type="importmap">
+    {
+        "imports": {
+            "retell-client-js-sdk": "https://esm.sh/retell-client-js-sdk@2.0.0"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Asistente de IA</h1>
+            <p>Conversa con tu asistente inteligente</p>
+        </header>
+
+        <main>
+            <div class="controls-section">
+                <button id="startButton" class="start-btn">
+                    <span class="btn-icon">▶️</span>
+                    <span>Empezar</span>
+                </button>
+                <button id="stopButton" class="stop-btn" style="display: none;">
+                    <span class="btn-icon">⏹️</span>
+                    <span>Detener</span>
+                </button>
+            </div>
+
+            <div class="conversation-section">
+                <div class="conversation-header">
+                    <h2>Conversación</h2>
+                    <button id="clearButton" class="clear-btn">Limpiar</button>
+                </div>
+                <div class="conversation-log" id="conversationLog">
+                    <div class="welcome-message">
+                        <p>👋 Bienvenido. Haz clic en "Empezar" para comenzar la conversación con el asistente de IA.</p>
+                    </div>
+                    <!-- Transcripción en tiempo real de Retell -->
+                    <div id="transcript-window" class="transcript-live" style="display: none;"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- app.js se carga como módulo ES6 para poder importar el SDK -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
+
