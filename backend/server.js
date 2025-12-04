@@ -23,7 +23,6 @@ const RETELL_CONFIG = {
 app.get('/api/config', (req, res) => {
     res.json({
         retellConfig: {
-            apiKey: RETELL_CONFIG.apiKey,
             agentId: RETELL_CONFIG.agentId
         }
     });
