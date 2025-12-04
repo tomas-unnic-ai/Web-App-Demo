@@ -109,13 +109,13 @@ function setupRetellEventListeners() {
         }
     });
 
-    retellWebClient.on("call_started", () => {
-        console.log('Call started');
+    retellWebClient.on("conversationStarted", () => {
+        console.log('Conversation started');
         updateStatus('Connected. Start speaking...', 'active');
     });
 
-    retellWebClient.on("call_ended", () => {
-        console.log('Call ended');
+    retellWebClient.on("conversationEnded", () => {
+        console.log('Conversation ended');
         updateStatus('Call ended');
         appState.isActive = false;
         updateUI('inactive');
@@ -165,6 +165,17 @@ async function handleStart() {
         return;
     }
 
+    // Solicitar permisos del micrófono ANTES de obtener el token
+    // Esto asegura que el usuario se una inmediatamente cuando se obtiene el token
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Cerrar el stream temporal, el SDK lo abrirá de nuevo
+        stream.getTracks().forEach(track => track.stop());
+    } catch (error) {
+        updateStatus('Error: Permisos de micrófono denegados', 'error');
+        return;
+    }
+
     appState.isActive = true;
     appState.currentSessionId = generateSessionId();
     
@@ -194,10 +205,13 @@ async function handleStart() {
             throw new Error('No call_id received');
         }
 
-        // Inicia la conversación usando el método correcto: startConversation
+        // IMPORTANTE: Llamar a startConversation INMEDIATAMENTE después de obtener el token
+        // El access_token expira en 30 segundos si no se usa
+        // No hacer ninguna otra operación asíncrona entre obtener el token y llamar a startConversation
         await retellWebClient.startConversation({
             callId: tokenData.call_id,
-            enableUpdate: true
+            enableUpdate: true,
+            sampleRate: 24000 // Frecuencia de muestreo estándar para Retell
         });
 
         updateStatus('Listening...', 'active');
