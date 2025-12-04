@@ -1,12 +1,4 @@
 {
-  "functions": {
-    "api/config.js": {
-      "runtime": "nodejs20.x"
-    },
-    "api/retell/token.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/((?!api).*)",
