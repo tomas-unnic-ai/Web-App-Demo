@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente de IA</title>
+    <title>AI Voice Assistant</title>
     <link rel="stylesheet" href="styles.css">
     
     <!-- Importmap para resolver módulos npm sin bundler -->
@@ -18,40 +18,32 @@
 <body>
     <div class="container">
         <header>
-            <h1>🤖 Asistente de IA</h1>
-            <p>Conversa con tu asistente inteligente</p>
+            <h1>AI Voice Assistant</h1>
+            <p class="subtitle">Press the button below to start a conversation</p>
         </header>
 
         <main>
-            <div class="controls-section">
-                <button id="startButton" class="start-btn">
-                    <span class="btn-icon">▶️</span>
-                    <span>Empezar</span>
-                </button>
-                <button id="stopButton" class="stop-btn" style="display: none;">
-                    <span class="btn-icon">⏹️</span>
-                    <span>Detener</span>
-                </button>
-            </div>
+            <button id="micButton" class="mic-button">
+                <svg class="mic-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 14C13.66 14 15 12.66 15 11V5C15 3.34 13.66 2 12 2C10.34 2 9 3.34 9 5V11C9 12.66 10.34 14 12 14Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M5 11C5 14.87 8.13 18 12 18C15.87 18 19 14.87 19 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 18V22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="pulse-ring"></div>
+            </button>
+            
+            <p id="statusText" class="status-text"></p>
+            
+            <!-- Transcripción en tiempo real -->
+            <div id="transcript-window" class="transcript-window"></div>
 
-            <div class="conversation-section">
-                <div class="conversation-header">
-                    <h2>Conversación</h2>
-                    <button id="clearButton" class="clear-btn">Limpiar</button>
-                </div>
-                <div class="conversation-log" id="conversationLog">
-                    <div class="welcome-message">
-                        <p>👋 Bienvenido. Haz clic en "Empezar" para comenzar la conversación con el asistente de IA.</p>
-                    </div>
-                    <!-- Transcripción en tiempo real de Retell -->
-                    <div id="transcript-window" class="transcript-live" style="display: none;"></div>
-                </div>
-            </div>
+            <!-- Logo Unnic -->
+            <a href="https://unnic.ai" target="_blank" rel="noopener noreferrer" class="unnic-logo">
+                <span class="unnic-text">unnic<span class="dot">.</span></span>
+            </a>
         </main>
     </div>
 
-    <!-- app.js se carga como módulo ES6 para poder importar el SDK -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
-
