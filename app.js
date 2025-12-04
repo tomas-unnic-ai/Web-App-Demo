@@ -152,6 +152,14 @@ async function handleStart() {
         return;
     }
 
+    // Verificar que el método startCall existe
+    if (typeof retellWebClient.startCall !== 'function') {
+        console.error('retellWebClient methods:', Object.getOwnPropertyNames(retellWebClient));
+        console.error('retellWebClient prototype:', Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient)));
+        updateStatus('Error: startCall method not available', 'error');
+        return;
+    }
+
     appState.isActive = true;
     appState.currentSessionId = generateSessionId();
     
