@@ -1,0 +1,17 @@
+{
+  "name": "web-app-demo",
+  "version": "1.0.0",
+  "description": "Frontend para la aplicación de asistente de IA con Retell",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "retell-client-js-sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "vite": "^7.2.6"
+  }
+}
