@@ -6,7 +6,7 @@ Thumbs.db
 *~
 
 # Archivos de configuración con información sensible
-config.js
+/config.js
 .env
 .env.local
 .env.production
@@ -26,8 +26,8 @@ package-lock.json
 vite.config.js
 dist/
 
-# Package.json de la raíz (solo se usa el del backend)
-/package.json
+# Package.json de la raíz - NO ignorar, es necesario para Vercel
+# /package.json
 
 # IDE y editores
 .idea/
