@@ -154,8 +154,15 @@ async function handleStart() {
 
     // Verificar que el método startCall existe
     if (typeof retellWebClient.startCall !== 'function') {
+        console.error('retellWebClient object:', retellWebClient);
         console.error('retellWebClient methods:', Object.getOwnPropertyNames(retellWebClient));
-        console.error('retellWebClient prototype:', Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient)));
+        console.error('retellWebClient prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient)));
+        console.error('All methods (including inherited):', Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient)).concat(Object.getOwnPropertyNames(retellWebClient)));
+        console.error('Checking for start, startCall, connect, call methods...');
+        console.error('start:', typeof retellWebClient.start);
+        console.error('startCall:', typeof retellWebClient.startCall);
+        console.error('connect:', typeof retellWebClient.connect);
+        console.error('call:', typeof retellWebClient.call);
         updateStatus('Error: startCall method not available', 'error');
         return;
     }
@@ -190,9 +197,22 @@ async function handleStart() {
         }
 
         // Inicia la conexión WebSocket con el token de acceso
-        await retellWebClient.startCall({
-            accessToken: tokenData.access_token
-        });
+        // Intentar diferentes métodos posibles
+        if (typeof retellWebClient.startCall === 'function') {
+            await retellWebClient.startCall({
+                accessToken: tokenData.access_token
+            });
+        } else if (typeof retellWebClient.start === 'function') {
+            await retellWebClient.start({
+                accessToken: tokenData.access_token
+            });
+        } else if (retellWebClient.liveClient && typeof retellWebClient.liveClient.startCall === 'function') {
+            await retellWebClient.liveClient.startCall({
+                accessToken: tokenData.access_token
+            });
+        } else {
+            throw new Error('No se encontró el método para iniciar la llamada. Métodos disponibles: ' + Object.getOwnPropertyNames(retellWebClient).join(', '));
+        }
 
         updateStatus('Listening...', 'active');
 
