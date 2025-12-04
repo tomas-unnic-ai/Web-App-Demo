@@ -1,39 +1,37 @@
 // Importar el SDK de Retell
 import { RetellWebClient } from "retell-client-js-sdk";
 
-// Instancia global de Retell Web Client
+// Instancia global del cliente web de Retell
 let retellWebClient = null;
 
-// Configuración de Retell (se obtiene del backend)
+// Configuración pública (solo Agent ID)
 const RETELL_CONFIG = {
-    apiKey: null,
     agentId: null
 };
 
-// Estado de la aplicación
+// Estado de la aplicación: gestión de la llamada actual
 const appState = {
     isActive: false,
     currentSessionId: null
 };
 
-// Elementos del DOM
+// Referencias a elementos del DOM
 const elements = {
     micButton: document.getElementById('micButton'),
     statusText: document.getElementById('statusText'),
     transcriptWindow: document.getElementById('transcript-window')
 };
 
-// Inicialización
+// Inicialización de la aplicación al cargar el documento
 document.addEventListener('DOMContentLoaded', async () => {
     initializeEventListeners();
     await loadConfigFromBackend();
 });
 
-// Cargar configuración desde el backend
+// Cargar Agent ID desde el backend mediante una ruta relativa
 async function loadConfigFromBackend() {
     try {
-        const backendUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
-        const configUrl = backendUrl ? `${backendUrl}/api/config` : '/api/config';
+        const configUrl = '/api/config'; 
 
         const response = await fetch(configUrl);
         
@@ -43,14 +41,13 @@ async function loadConfigFromBackend() {
         
         const config = await response.json();
         
-        if (config.retellConfig) {
-            RETELL_CONFIG.apiKey = config.retellConfig.apiKey;
+        if (config.retellConfig && config.retellConfig.agentId) {
             RETELL_CONFIG.agentId = config.retellConfig.agentId;
             
-            console.log('✅ Config loaded from backend');
+            console.log('✅ Config loaded from backend (Agent ID only)');
             initializeRetellWebClient();
         } else {
-            console.warn('⚠️ No Retell config found');
+            console.warn('⚠️ No Retell agentId found in config');
             updateStatus('Configuration error', 'error');
         }
         
@@ -60,7 +57,7 @@ async function loadConfigFromBackend() {
     }
 }
 
-// Inicializar Retell Web Client
+// Inicializar el cliente web de Retell
 function initializeRetellWebClient() {
     try {
         retellWebClient = new RetellWebClient();
@@ -72,7 +69,7 @@ function initializeRetellWebClient() {
     }
 }
 
-// Configurar event listeners de Retell
+// Configurar los listeners de eventos del cliente Retell (transcripción, estados)
 function setupRetellEventListeners() {
     if (!retellWebClient) return;
 
@@ -127,12 +124,12 @@ function setupRetellEventListeners() {
     });
 }
 
-// Event Listeners
+// Event Listeners del DOM
 function initializeEventListeners() {
     elements.micButton.addEventListener('click', toggleCall);
 }
 
-// Alternar llamada
+// Alternar entre iniciar y detener la llamada
 async function toggleCall() {
     if (appState.isActive) {
         handleStop();
@@ -141,12 +138,12 @@ async function toggleCall() {
     }
 }
 
-// Iniciar llamada
+// Iniciar llamada: solicita token al backend y establece la conexión
 async function handleStart() {
     if (appState.isActive) return;
 
-    if (!RETELL_CONFIG.apiKey || !RETELL_CONFIG.agentId) {
-        updateStatus('Not configured', 'error');
+    if (!RETELL_CONFIG.agentId) {
+        updateStatus('Agent ID not configured', 'error');
         return;
     }
 
@@ -162,8 +159,7 @@ async function handleStart() {
     updateStatus('Connecting...', 'active');
 
     try {
-        const backendUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
-        const configUrl = backendUrl ? `${backendUrl}/api/config` : '/api/config';
+        const tokenUrl = '/api/retell/token'; 
         
         const tokenResponse = await fetch(tokenUrl, {
             method: 'POST',
@@ -185,6 +181,7 @@ async function handleStart() {
             throw new Error('No access token received');
         }
 
+        // Inicia la conexión WebSocket con el token de acceso
         await retellWebClient.startCall({
             accessToken: tokenData.access_token
         });
@@ -199,7 +196,7 @@ async function handleStart() {
     }
 }
 
-// Detener llamada
+// Detener la llamada
 function handleStop() {
     if (!appState.isActive) return;
 
@@ -221,7 +218,7 @@ function handleStop() {
     }
 }
 
-// UI Updates
+// Actualizaciones de estado visual de la UI
 function updateUI(status) {
     if (status === 'active') {
         elements.micButton.classList.add('active');
@@ -230,6 +227,7 @@ function updateUI(status) {
     }
 }
 
+// Actualizar el texto de estado en pantalla
 function updateStatus(text, type = 'normal') {
     if (elements.statusText) {
         elements.statusText.textContent = text;
@@ -242,6 +240,7 @@ function updateStatus(text, type = 'normal') {
     }
 }
 
+// Mostrar transcripción
 function showTranscript(text) {
     if (elements.transcriptWindow) {
         elements.transcriptWindow.textContent = text;
@@ -249,6 +248,7 @@ function showTranscript(text) {
     }
 }
 
+// Ocultar transcripción
 function hideTranscript() {
     if (elements.transcriptWindow) {
         elements.transcriptWindow.classList.remove('visible');
@@ -260,7 +260,7 @@ function hideTranscript() {
     }
 }
 
-// Utilities
+// Utilidad para generar un ID de sesión único
 function generateSessionId() {
     return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
