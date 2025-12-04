@@ -32,9 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Cargar configuración desde el backend
 async function loadConfigFromBackend() {
     try {
-        const backendUrl = window.BACKEND_URL || '';
+        const backendUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
         const configUrl = backendUrl ? `${backendUrl}/api/config` : '/api/config';
-        
+
         const response = await fetch(configUrl);
         
         if (!response.ok) {
@@ -162,8 +162,8 @@ async function handleStart() {
     updateStatus('Connecting...', 'active');
 
     try {
-        const backendUrl = window.BACKEND_URL || '';
-        const tokenUrl = backendUrl ? `${backendUrl}/api/retell/token` : '/api/retell/token';
+        const backendUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+        const configUrl = backendUrl ? `${backendUrl}/api/config` : '/api/config';
         
         const tokenResponse = await fetch(tokenUrl, {
             method: 'POST',
