@@ -114,17 +114,29 @@ function setupRetellEventListeners() {
         updateStatus('Connected. Start speaking...', 'active');
     });
 
-    retellWebClient.on("conversationEnded", () => {
-        console.log('Conversation ended');
+    retellWebClient.on("conversationEnded", (data) => {
+        console.log('Conversation ended:', data);
         updateStatus('Call ended');
         appState.isActive = false;
         updateUI('inactive');
         hideTranscript();
     });
 
+    retellWebClient.on("disconnect", () => {
+        console.log('Disconnect event');
+        // No terminar la conversación automáticamente en disconnect
+        // Puede ser una desconexión temporal
+    });
+
+    retellWebClient.on("reconnect", () => {
+        console.log('Reconnect event');
+        updateStatus('Reconnected', 'active');
+    });
+
     retellWebClient.on("error", (error) => {
         console.error('Retell error:', error);
-        updateStatus('Error: ' + (error.message || 'Unknown'), 'error');
+        console.error('Error details:', JSON.stringify(error, null, 2));
+        updateStatus('Error: ' + (error.message || JSON.stringify(error)), 'error');
         appState.isActive = false;
         updateUI('inactive');
     });
