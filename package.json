@@ -4,7 +4,8 @@
   "description": "Frontend para la aplicación de asistente de IA con Retell",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vercel dev",
+    "start": "vercel dev",
     "build": "vite build",
     "preview": "vite preview"
   },

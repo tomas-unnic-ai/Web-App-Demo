@@ -137,8 +137,13 @@ function setupRetellEventListeners() {
     });
 
     retellWebClient.on("conversationStarted", () => {
-        console.log('Conversation started');
+        console.log('Conversation started - WebSocket connection established');
+        console.log('SDK stream status:', retellWebClient.stream ? 'Active' : 'Not detected');
         updateStatus('Connected. Start speaking...', 'active');
+        
+        // Cuando la conversación se inicia, el SDK debería tener su propio stream
+        // Podemos cerrar el stream temporal si existe
+        // Esto se manejará en handleStart después de que startConversation complete
     });
 
     retellWebClient.on("call_ended", (data) => {
@@ -327,18 +332,17 @@ async function handleStart() {
             // Esta versión del SDK puede requerir solo callId, o puede usar accessToken de manera diferente
             // Intentar primero con callId y accessToken
             // Si falla, el SDK puede obtener el token automáticamente usando el callId
-            // El código 1005 sugiere un problema de autenticación
-            // Esta versión del SDK puede no aceptar accessToken como parámetro
-            // Intentar primero solo con callId - el SDK puede obtener el token internamente
+            // El código 1005 indica que el WebSocket se cierra por falta de autenticación
+            // El accessToken es CRÍTICO para establecer la conexión WebSocket
+            // Esta versión del SDK requiere tanto callId como accessToken
             const conversationParams = {
                 callId: tokenData.call_id,
-                // NO incluir accessToken - esta versión del SDK puede obtenerlo automáticamente
-                // accessToken: tokenData.access_token, // Comentado para probar
+                accessToken: tokenData.access_token, // CRÍTICO: necesario para autenticación WebSocket
                 enableUpdate: true, // Importante: permite recibir eventos de actualización
                 sampleRate: 24000
             };
             
-            console.log('⚠️ Testing without accessToken parameter - SDK may get it automatically via callId');
+            console.log('✅ Using accessToken for WebSocket authentication');
             
             console.log('Starting conversation with params:', {
                 callId: conversationParams.callId,
@@ -357,29 +361,31 @@ async function handleStart() {
         }
 
         // El SDK ahora manejará el stream de audio
-        // NO cerrar el stream temporal inmediatamente - el SDK puede necesitarlo
-        // Esperar a que el evento 'conversationStarted' confirme que la conexión está establecida
-        // El SDK cerrará el stream temporal cuando esté listo
+        // El SDK creará su propio stream cuando llame a startConversation
+        // Cerrar el stream temporal después de un breve delay para dar tiempo al SDK
         if (micStream) {
-            // Esperar más tiempo para asegurar que el SDK establezca la conexión WebSocket
-            // El código 1005 sugiere que la conexión se cierra antes de establecerse completamente
+            // El SDK necesita crear su propio stream, así que cerramos el temporal
+            // después de darle tiempo para que establezca la conexión WebSocket
             setTimeout(() => {
-                // Solo cerrar si el SDK no ha tomado control del stream
                 // Verificar si el SDK tiene su propio stream activo
-                if (retellWebClient && retellWebClient.stream) {
-                    console.log('SDK has its own stream, closing temporary stream');
-                    micStream.getTracks().forEach(track => track.stop());
+                const sdkHasStream = retellWebClient && retellWebClient.stream && retellWebClient.stream.active;
+                
+                if (sdkHasStream) {
+                    console.log('✅ SDK has its own active stream, closing temporary stream');
+                    micStream.getTracks().forEach(track => {
+                        track.stop();
+                        console.log('Temporary stream track stopped:', track.kind);
+                    });
                 } else {
-                    console.log('SDK stream not detected yet, keeping temporary stream active longer');
-                    // Esperar un poco más
-                    setTimeout(() => {
-                        if (micStream) {
-                            micStream.getTracks().forEach(track => track.stop());
-                            console.log('Temporary microphone stream closed after extended wait');
-                        }
-                    }, 2000);
+                    console.log('⚠️ SDK stream not detected, but closing temporary stream anyway');
+                    console.log('SDK should create its own stream internally');
+                    // Cerrar el stream temporal - el SDK debería crear el suyo
+                    micStream.getTracks().forEach(track => {
+                        track.stop();
+                        console.log('Temporary stream track stopped:', track.kind);
+                    });
                 }
-            }, 2000); // Aumentar el tiempo de espera
+            }, 500); // Reducir el tiempo - el SDK debería crear su stream rápidamente
         }
 
         updateStatus('Listening...', 'active');
