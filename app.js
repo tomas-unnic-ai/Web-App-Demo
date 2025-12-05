@@ -109,13 +109,13 @@ function setupRetellEventListeners() {
         }
     });
 
-    retellWebClient.on("conversationStarted", () => {
-        console.log('Conversation started');
+    retellWebClient.on("call_started", () => {
+        console.log('Call started');
         updateStatus('Connected. Start speaking...', 'active');
     });
 
-    retellWebClient.on("conversationEnded", (data) => {
-        console.log('Conversation ended:', data);
+    retellWebClient.on("call_ended", (data) => {
+        console.log('Call ended:', data);
         updateStatus('Call ended');
         appState.isActive = false;
         updateUI('inactive');
@@ -170,10 +170,10 @@ async function handleStart() {
         return;
     }
 
-    // Verificar que el método startConversation existe
-    if (typeof retellWebClient.startConversation !== 'function') {
-        console.error('Error: startConversation method not available');
-        updateStatus('Error: startConversation method not available', 'error');
+    // Verificar que el método startCall existe
+    if (typeof retellWebClient.startCall !== 'function') {
+        console.error('Error: startCall method not available');
+        updateStatus('Error: startCall method not available', 'error');
         return;
     }
 
@@ -224,28 +224,20 @@ async function handleStart() {
         console.log('Token received, starting conversation with call_id:', tokenData.call_id);
         console.log('Access token length:', tokenData.access_token?.length || 0);
 
-        // IMPORTANTE: Llamar a startConversation INMEDIATAMENTE después de obtener el token
+        // IMPORTANTE: Llamar a startCall INMEDIATAMENTE después de obtener el token
         // El access_token expira en 30 segundos si no se usa
-        // No hacer ninguna otra operación asíncrona entre obtener el token y llamar a startConversation
-        
-        // Intentar con ambos nombres de parámetro (accessToken y token)
-        // Algunos SDKs usan 'token' en lugar de 'accessToken'
-        const conversationParams = {
-            callId: tokenData.call_id,
+        // Según la documentación oficial: https://docs.retellai.com/deploy/web-call
+        const callParams = {
             accessToken: tokenData.access_token, // CRÍTICO: El token de acceso es necesario para autenticarse
-            token: tokenData.access_token, // También intentar con 'token' por si el SDK lo espera así
-            enableUpdate: true,
             sampleRate: 24000 // Frecuencia de muestreo estándar para Retell
         };
         
-        console.log('Starting conversation with params:', {
-            callId: conversationParams.callId,
-            accessToken: conversationParams.accessToken ? '***' + conversationParams.accessToken.slice(-10) : 'MISSING',
-            enableUpdate: conversationParams.enableUpdate,
-            sampleRate: conversationParams.sampleRate
+        console.log('Starting call with params:', {
+            accessToken: callParams.accessToken ? '***' + callParams.accessToken.slice(-10) : 'MISSING',
+            sampleRate: callParams.sampleRate
         });
         
-        await retellWebClient.startConversation(conversationParams);
+        await retellWebClient.startCall(callParams);
 
         updateStatus('Listening...', 'active');
 
@@ -270,8 +262,9 @@ function handleStop() {
     
     if (retellWebClient) {
         try {
-            if (typeof retellWebClient.stopConversation === 'function') {
-                retellWebClient.stopConversation();
+            // Según la documentación oficial: https://docs.retellai.com/deploy/web-call
+            if (typeof retellWebClient.stopCall === 'function') {
+                retellWebClient.stopCall();
             }
         } catch (error) {
             console.error('Error stopping call:', error);
