@@ -322,59 +322,33 @@ async function handleStart() {
             sampleRate: callParams.sampleRate
         });
         
-        // Intentar usar startCall primero, si no está disponible usar startConversation
+        // Según la documentación oficial: https://docs.retellai.com/deploy/web-call
+        // El método correcto es startCall() con accessToken
         if (typeof retellWebClient.startCall === 'function') {
-            console.log('Using startCall method');
+            console.log('✅ Using startCall() method (official documentation)');
             await retellWebClient.startCall(callParams);
+            console.log('✅ startCall() completed successfully');
         } else if (typeof retellWebClient.startConversation === 'function') {
-            console.log('Using startConversation method (fallback - older SDK version)');
+            // Fallback para versiones antiguas del SDK
+            console.error('⚠️ WARNING: Using outdated SDK version with startConversation()');
+            console.error('⚠️ Please update to the latest SDK version that includes startCall()');
+            console.error('⚠️ Current SDK version may not be compatible with the latest Retell API');
             
-            // Esta versión del SDK usa startConversation en lugar de startCall
-            // Según la documentación, startCall solo necesita accessToken
-            // Intentar primero solo con accessToken (como startCall)
-            // Si falla, intentar con callId también
-            console.log('⚠️ Using older SDK version with startConversation');
-            console.log('Attempting to use accessToken only (like startCall in newer versions)');
+            // Intentar usar startConversation con solo accessToken (como startCall)
+            const conversationParams = {
+                accessToken: tokenData.access_token,
+                sampleRate: 24000
+            };
             
-            try {
-                // Intentar primero solo con accessToken (como la documentación de startCall)
-                const conversationParamsAccessTokenOnly = {
-                    accessToken: tokenData.access_token,
-                    sampleRate: 24000
-                };
-                
-                console.log('Trying startConversation with accessToken only:', {
-                    accessToken: conversationParamsAccessTokenOnly.accessToken ? '***' + conversationParamsAccessTokenOnly.accessToken.slice(-10) : 'MISSING',
-                    sampleRate: conversationParamsAccessTokenOnly.sampleRate
-                });
-                
-                await retellWebClient.startConversation(conversationParamsAccessTokenOnly);
-                console.log('✅ startConversation with accessToken only succeeded');
-            } catch (error) {
-                console.log('⚠️ startConversation with accessToken only failed, trying with callId:', error.message);
-                
-                // Si falla, intentar con callId también (versión antigua del SDK)
-                const conversationParams = {
-                    callId: tokenData.call_id,
-                    accessToken: tokenData.access_token,
-                    enableUpdate: true,
-                    sampleRate: 24000
-                };
-                
-                console.log('Trying startConversation with callId and accessToken:', {
-                    callId: conversationParams.callId,
-                    accessToken: conversationParams.accessToken ? '***' + conversationParams.accessToken.slice(-10) : 'MISSING',
-                    enableUpdate: conversationParams.enableUpdate,
-                    sampleRate: conversationParams.sampleRate
-                });
-                
-                await retellWebClient.startConversation(conversationParams);
-                console.log('✅ startConversation with callId and accessToken succeeded');
-            }
+            console.log('Attempting startConversation with accessToken only (fallback):', {
+                accessToken: conversationParams.accessToken ? '***' + conversationParams.accessToken.slice(-10) : 'MISSING',
+                sampleRate: conversationParams.sampleRate
+            });
             
-            console.log('startConversation completed, connection should be established');
+            await retellWebClient.startConversation(conversationParams);
+            console.log('⚠️ startConversation completed (using outdated SDK)');
         } else {
-            throw new Error('No start method available');
+            throw new Error('No start method available. SDK may not be loaded correctly. Please refresh the page.');
         }
 
         // El SDK ahora manejará el stream de audio

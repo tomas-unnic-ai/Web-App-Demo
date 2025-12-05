@@ -8,10 +8,11 @@
     
     <!-- Importmap para resolver módulos npm sin bundler -->
     <!-- Usar la versión más reciente para tener startCall según la documentación oficial -->
+    <!-- Forzar recarga sin caché agregando ?no-cache para desarrollo -->
     <script type="importmap">
     {
         "imports": {
-            "retell-client-js-sdk": "https://esm.sh/retell-client-js-sdk@latest"
+            "retell-client-js-sdk": "https://esm.sh/retell-client-js-sdk@latest?no-cache"
         }
     }
     </script>

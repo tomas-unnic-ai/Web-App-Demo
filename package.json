@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "retell-client-js-sdk": "^1.0.0"
+    "retell-client-js-sdk": "^2.0.7"
   },
   "devDependencies": {
     "vite": "^7.2.6"
