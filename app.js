@@ -60,18 +60,39 @@ async function loadConfigFromBackend() {
 // Inicializar el cliente web de Retell
 function initializeRetellWebClient() {
     try {
+        // Verificar que RetellWebClient esté disponible
+        if (typeof RetellWebClient === 'undefined') {
+            console.error('❌ RetellWebClient is not defined. Check if the SDK is loaded correctly.');
+            updateStatus('SDK not loaded', 'error');
+            return;
+        }
+        
         retellWebClient = new RetellWebClient();
+        
+        // Verificar que la instancia se creó correctamente
+        if (!retellWebClient) {
+            console.error('❌ Failed to create RetellWebClient instance');
+            updateStatus('Failed to initialize client', 'error');
+            return;
+        }
+        
         setupRetellEventListeners();
         console.log('✅ Retell Web Client initialized');
+        
         // Debug: mostrar métodos disponibles
+        const methods = Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient));
         console.log('RetellWebClient instance:', retellWebClient);
-        console.log('Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient)));
+        console.log('Available methods:', methods);
+        console.log('Has startCall:', typeof retellWebClient.startCall === 'function');
+        console.log('Has startConversation:', typeof retellWebClient.startConversation === 'function');
+        
         if (retellWebClient.liveClient) {
             console.log('liveClient methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient.liveClient)));
         }
     } catch (error) {
         console.error('❌ Error initializing Retell:', error);
-        updateStatus('Initialization error', 'error');
+        console.error('Error stack:', error.stack);
+        updateStatus('Initialization error: ' + error.message, 'error');
     }
 }
 
@@ -166,14 +187,41 @@ async function handleStart() {
     }
 
     if (!retellWebClient) {
-        updateStatus('Client not ready', 'error');
+        console.error('retellWebClient is null or undefined');
+        updateStatus('Client not ready. Please refresh the page.', 'error');
         return;
     }
 
-    // Verificar que el método startCall existe
-    if (typeof retellWebClient.startCall !== 'function') {
-        console.error('Error: startCall method not available');
-        updateStatus('Error: startCall method not available', 'error');
+    // Verificar que retellWebClient es una instancia válida
+    if (typeof retellWebClient !== 'object') {
+        console.error('retellWebClient is not an object:', typeof retellWebClient);
+        updateStatus('Client initialization error', 'error');
+        return;
+    }
+
+    // Verificar qué métodos están disponibles
+    const availableMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(retellWebClient));
+    console.log('Available methods on retellWebClient:', availableMethods);
+    
+    // También verificar métodos en la instancia misma (no solo en el prototipo)
+    const instanceMethods = Object.getOwnPropertyNames(retellWebClient);
+    console.log('Instance properties:', instanceMethods);
+    
+    // Verificar si startCall o startConversation están disponibles
+    const hasStartCall = typeof retellWebClient.startCall === 'function';
+    const hasStartConversation = typeof retellWebClient.startConversation === 'function';
+    
+    console.log('hasStartCall:', hasStartCall);
+    console.log('hasStartConversation:', hasStartConversation);
+    console.log('retellWebClient type:', typeof retellWebClient);
+    console.log('retellWebClient constructor:', retellWebClient.constructor?.name);
+    
+    if (!hasStartCall && !hasStartConversation) {
+        console.error('Error: Neither startCall nor startConversation method available');
+        console.error('Available methods:', availableMethods);
+        console.error('Instance properties:', instanceMethods);
+        console.error('Full retellWebClient object:', retellWebClient);
+        updateStatus('Error: Start method not available. Check console for details.', 'error');
         return;
     }
 
@@ -237,7 +285,20 @@ async function handleStart() {
             sampleRate: callParams.sampleRate
         });
         
-        await retellWebClient.startCall(callParams);
+        // Intentar usar startCall primero, si no está disponible usar startConversation
+        if (typeof retellWebClient.startCall === 'function') {
+            console.log('Using startCall method');
+            await retellWebClient.startCall(callParams);
+        } else if (typeof retellWebClient.startConversation === 'function') {
+            console.log('Using startConversation method (fallback)');
+            // startConversation puede requerir callId también
+            await retellWebClient.startConversation({
+                ...callParams,
+                callId: tokenData.call_id
+            });
+        } else {
+            throw new Error('No start method available');
+        }
 
         updateStatus('Listening...', 'active');
 
@@ -262,9 +323,11 @@ function handleStop() {
     
     if (retellWebClient) {
         try {
-            // Según la documentación oficial: https://docs.retellai.com/deploy/web-call
+            // Intentar usar stopCall primero, si no está disponible usar stopConversation
             if (typeof retellWebClient.stopCall === 'function') {
                 retellWebClient.stopCall();
+            } else if (typeof retellWebClient.stopConversation === 'function') {
+                retellWebClient.stopConversation();
             }
         } catch (error) {
             console.error('Error stopping call:', error);
