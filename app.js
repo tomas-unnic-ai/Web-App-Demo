@@ -130,13 +130,27 @@ function setupRetellEventListeners() {
         }
     });
 
+    // Escuchar ambos eventos por compatibilidad con diferentes versiones del SDK
     retellWebClient.on("call_started", () => {
         console.log('Call started');
         updateStatus('Connected. Start speaking...', 'active');
     });
 
+    retellWebClient.on("conversationStarted", () => {
+        console.log('Conversation started');
+        updateStatus('Connected. Start speaking...', 'active');
+    });
+
     retellWebClient.on("call_ended", (data) => {
         console.log('Call ended:', data);
+        updateStatus('Call ended');
+        appState.isActive = false;
+        updateUI('inactive');
+        hideTranscript();
+    });
+
+    retellWebClient.on("conversationEnded", (data) => {
+        console.log('Conversation ended:', data);
         updateStatus('Call ended');
         appState.isActive = false;
         updateUI('inactive');
@@ -227,11 +241,19 @@ async function handleStart() {
 
     // Solicitar permisos del micrófono ANTES de obtener el token
     // Esto asegura que el usuario se una inmediatamente cuando se obtiene el token
+    // NOTA: No cerramos el stream aquí, el SDK lo manejará internamente
+    let micStream = null;
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Cerrar el stream temporal, el SDK lo abrirá de nuevo
-        stream.getTracks().forEach(track => track.stop());
+        micStream = await navigator.mediaDevices.getUserMedia({ 
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
+        });
+        console.log('Microphone permission granted, stream active');
     } catch (error) {
+        console.error('Error getting microphone permission:', error);
         updateStatus('Error: Permisos de micrófono denegados', 'error');
         return;
     }
@@ -291,13 +313,33 @@ async function handleStart() {
             await retellWebClient.startCall(callParams);
         } else if (typeof retellWebClient.startConversation === 'function') {
             console.log('Using startConversation method (fallback)');
-            // startConversation puede requerir callId también
-            await retellWebClient.startConversation({
-                ...callParams,
-                callId: tokenData.call_id
+            // startConversation requiere callId, accessToken, enableUpdate y sampleRate
+            // enableUpdate debe ser true para recibir eventos de transcripción
+            const conversationParams = {
+                callId: tokenData.call_id,
+                accessToken: tokenData.access_token,
+                enableUpdate: true, // Importante: permite recibir eventos de actualización
+                sampleRate: 24000
+            };
+            console.log('Starting conversation with params:', {
+                callId: conversationParams.callId,
+                accessToken: conversationParams.accessToken ? '***' + conversationParams.accessToken.slice(-10) : 'MISSING',
+                enableUpdate: conversationParams.enableUpdate,
+                sampleRate: conversationParams.sampleRate
             });
+            await retellWebClient.startConversation(conversationParams);
         } else {
             throw new Error('No start method available');
+        }
+
+        // El SDK ahora manejará el stream de audio
+        // Si teníamos un stream temporal, el SDK lo reemplazará
+        if (micStream) {
+            // Dar tiempo al SDK para establecer su propio stream
+            setTimeout(() => {
+                micStream.getTracks().forEach(track => track.stop());
+                console.log('Temporary microphone stream closed, SDK stream should be active');
+            }, 1000);
         }
 
         updateStatus('Listening...', 'active');
@@ -307,6 +349,10 @@ async function handleStart() {
         updateStatus('Error: ' + error.message, 'error');
         appState.isActive = false;
         updateUI('inactive');
+        // Cerrar el stream si hay un error
+        if (micStream) {
+            micStream.getTracks().forEach(track => track.stop());
+        }
     }
 }
 
