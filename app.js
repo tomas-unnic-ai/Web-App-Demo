@@ -151,6 +151,16 @@ function setupRetellEventListeners() {
 
     retellWebClient.on("conversationEnded", (data) => {
         console.log('Conversation ended:', data);
+        console.log('End reason code:', data?.code);
+        console.log('End reason:', data?.reason);
+        
+        // El código 1005 indica que el WebSocket se cerró sin un frame de cierre apropiado
+        // Esto puede indicar un problema de autenticación o conexión
+        if (data?.code === 1005) {
+            console.error('WebSocket closed with code 1005 - connection closed improperly');
+            console.error('This usually means the access token is invalid or the connection failed to establish');
+        }
+        
         updateStatus('Call ended');
         appState.isActive = false;
         updateUI('inactive');
@@ -313,33 +323,63 @@ async function handleStart() {
             await retellWebClient.startCall(callParams);
         } else if (typeof retellWebClient.startConversation === 'function') {
             console.log('Using startConversation method (fallback)');
-            // startConversation requiere callId, accessToken, enableUpdate y sampleRate
-            // enableUpdate debe ser true para recibir eventos de transcripción
+            
+            // Esta versión del SDK puede requerir solo callId, o puede usar accessToken de manera diferente
+            // Intentar primero con callId y accessToken
+            // Si falla, el SDK puede obtener el token automáticamente usando el callId
+            // El código 1005 sugiere un problema de autenticación
+            // Esta versión del SDK puede no aceptar accessToken como parámetro
+            // Intentar primero solo con callId - el SDK puede obtener el token internamente
             const conversationParams = {
                 callId: tokenData.call_id,
-                accessToken: tokenData.access_token,
+                // NO incluir accessToken - esta versión del SDK puede obtenerlo automáticamente
+                // accessToken: tokenData.access_token, // Comentado para probar
                 enableUpdate: true, // Importante: permite recibir eventos de actualización
                 sampleRate: 24000
             };
+            
+            console.log('⚠️ Testing without accessToken parameter - SDK may get it automatically via callId');
+            
             console.log('Starting conversation with params:', {
                 callId: conversationParams.callId,
                 accessToken: conversationParams.accessToken ? '***' + conversationParams.accessToken.slice(-10) : 'MISSING',
                 enableUpdate: conversationParams.enableUpdate,
                 sampleRate: conversationParams.sampleRate
             });
+            
+            // IMPORTANTE: NO cerrar el stream de micrófono antes de que startConversation complete
+            // El SDK necesita el stream activo para establecer la conexión WebSocket correctamente
+            console.log('Calling startConversation, micStream should still be active...');
             await retellWebClient.startConversation(conversationParams);
+            console.log('startConversation completed, connection should be established');
         } else {
             throw new Error('No start method available');
         }
 
         // El SDK ahora manejará el stream de audio
-        // Si teníamos un stream temporal, el SDK lo reemplazará
+        // NO cerrar el stream temporal inmediatamente - el SDK puede necesitarlo
+        // Esperar a que el evento 'conversationStarted' confirme que la conexión está establecida
+        // El SDK cerrará el stream temporal cuando esté listo
         if (micStream) {
-            // Dar tiempo al SDK para establecer su propio stream
+            // Esperar más tiempo para asegurar que el SDK establezca la conexión WebSocket
+            // El código 1005 sugiere que la conexión se cierra antes de establecerse completamente
             setTimeout(() => {
-                micStream.getTracks().forEach(track => track.stop());
-                console.log('Temporary microphone stream closed, SDK stream should be active');
-            }, 1000);
+                // Solo cerrar si el SDK no ha tomado control del stream
+                // Verificar si el SDK tiene su propio stream activo
+                if (retellWebClient && retellWebClient.stream) {
+                    console.log('SDK has its own stream, closing temporary stream');
+                    micStream.getTracks().forEach(track => track.stop());
+                } else {
+                    console.log('SDK stream not detected yet, keeping temporary stream active longer');
+                    // Esperar un poco más
+                    setTimeout(() => {
+                        if (micStream) {
+                            micStream.getTracks().forEach(track => track.stop());
+                            console.log('Temporary microphone stream closed after extended wait');
+                        }
+                    }, 2000);
+                }
+            }, 2000); // Aumentar el tiempo de espera
         }
 
         updateStatus('Listening...', 'active');
