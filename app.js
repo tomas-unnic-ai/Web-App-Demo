@@ -217,14 +217,35 @@ async function handleStart() {
             throw new Error('No call_id received');
         }
 
+        if (!tokenData.access_token) {
+            throw new Error('No access_token received');
+        }
+
+        console.log('Token received, starting conversation with call_id:', tokenData.call_id);
+        console.log('Access token length:', tokenData.access_token?.length || 0);
+
         // IMPORTANTE: Llamar a startConversation INMEDIATAMENTE después de obtener el token
         // El access_token expira en 30 segundos si no se usa
         // No hacer ninguna otra operación asíncrona entre obtener el token y llamar a startConversation
-        await retellWebClient.startConversation({
+        
+        // Intentar con ambos nombres de parámetro (accessToken y token)
+        // Algunos SDKs usan 'token' en lugar de 'accessToken'
+        const conversationParams = {
             callId: tokenData.call_id,
+            accessToken: tokenData.access_token, // CRÍTICO: El token de acceso es necesario para autenticarse
+            token: tokenData.access_token, // También intentar con 'token' por si el SDK lo espera así
             enableUpdate: true,
             sampleRate: 24000 // Frecuencia de muestreo estándar para Retell
+        };
+        
+        console.log('Starting conversation with params:', {
+            callId: conversationParams.callId,
+            accessToken: conversationParams.accessToken ? '***' + conversationParams.accessToken.slice(-10) : 'MISSING',
+            enableUpdate: conversationParams.enableUpdate,
+            sampleRate: conversationParams.sampleRate
         });
+        
+        await retellWebClient.startConversation(conversationParams);
 
         updateStatus('Listening...', 'active');
 
